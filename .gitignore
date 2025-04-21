@@ -1,0 +1,12 @@
+﻿# Ignore large files/folders
+models/
+__pycache__/
+uploads/
+dataset/
+*.mp4
+*.avi
+*.mov
+
+# Ignore environment files
+.env
+*.env
