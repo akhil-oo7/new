@@ -66,7 +66,7 @@ def analyze_video():
             'status': 'UNSAFE' if unsafe_frames else 'SAFE',
             'total_frames': len(results),
             'unsafe_frames': len(unsafe_frames),
-            'unsafe_percentage': (len(unsafe_frames) / len(results) * 100 if results else 0,
+            'unsafe_percentage': (len(unsafe_frames) / len(results)) * 100 if results else 0,
             'confidence': max(r['confidence'] for r in results) if results else 1.0,
             'details': [
                 {
@@ -96,6 +96,7 @@ def health():
         'status': 'ready',
         'model_loaded': os.path.exists(
             os.path.join(app.config['MODEL_PATH'], 'model.safetensors')
+        )
     })
 
 # ===== Main =====
