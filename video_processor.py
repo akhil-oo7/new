@@ -3,6 +3,7 @@ import numpy as np
 from tqdm import tqdm
 import os
 import logging
+import psutil
 
 class VideoProcessor:
     def __init__(self, frame_interval=30, target_size=(224, 224)):
@@ -37,7 +38,7 @@ class VideoProcessor:
 
     def extract_frames(self, video_path, max_frames=None):
         """
-        Extract frames from a video file with robust error handling.
+        Extract frames from a video file with robust error handling and memory optimization.
         
         Args:
             video_path (str): Path to the video file
@@ -81,6 +82,12 @@ class VideoProcessor:
                     
                     if frame_count % effective_interval == 0:
                         try:
+                            # Check memory usage
+                            memory_usage = psutil.virtual_memory().percent
+                            if memory_usage > 80:  # Threshold for memory usage
+                                self.logger.warning("High memory usage detected. Pausing frame extraction.")
+                                break
+                            
                             # Convert BGR to RGB and resize
                             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                             frame_resized = cv2.resize(frame_rgb, self.target_size)
