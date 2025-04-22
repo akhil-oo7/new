@@ -4,7 +4,6 @@ from flask import Flask, render_template, request, jsonify
 from werkzeug.utils import secure_filename
 from video_processor import VideoProcessor
 from content_moderator import ContentModerator
-from transformers import pipeline
 
 # Load environment variables
 load_dotenv()
@@ -27,9 +26,6 @@ os.makedirs(app.config['MODEL_PATH'], exist_ok=True)
 # ===== Initialize Components =====
 video_processor = VideoProcessor()
 content_moderator = ContentModerator(train_mode=False)
-
-# Preload the model
-model = pipeline("your-task", model="path/to/model")
 
 # ===== Helper Functions =====
 def allowed_file(filename):
@@ -96,7 +92,8 @@ def analyze_video():
 @app.route("/process", methods=["POST"])
 def process():
     frames = video_processor.extract_frames(request.files["video"])
-    return model(frames)  # Use the preloaded model
+    results = content_moderator.analyze_frames(frames)
+    return jsonify(results)
 
 # ===== Health Check =====
 @app.route('/health')
