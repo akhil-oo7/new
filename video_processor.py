@@ -80,9 +80,17 @@ class VideoProcessor:
                         # Resize frame
                         frame_resized = cv2.resize(frame, self.target_size)
                         frames.append(frame_resized)
-                    except Exception as e:
+                    
+                    if frame is None:
+                        raise ValueError("Frame is empty")
+                    
+                    try:
                         self.logger.error(f"Skipping frame {frame_count}: {str(e)}")
                         continue
+                    except Exception as e:
+                        self.logger.error(f"Error processing frame {frame_count}: {str(e)}")
+                        continue
+                    
                     frame_count += 1
                     pbar.update(1)
             
