@@ -69,35 +69,39 @@ def analyze_video():
         results = content_moderator.analyze_frames(frames)
         app.logger.info(f"Analyzed {len(results)} frames.")
 
-        # Generate response
-        unsafe_frames = [r for r in results if r['flagged']]
-        app.logger.info(f"Unsafe frames detected: {len(unsafe_frames)}")
-        response = {
-            'status': 'UNSAFE' if unsafe_frames else 'SAFE',
-            'total_frames': len(results),
-            'unsafe_frames': len(unsafe_frames),
-            'unsafe_percentage': (len(unsafe_frames) / len(results)) * 100 if results else 0,
-            'confidence': max(r['confidence'] for r in results) if results else 1.0,
-            'details': [
-                {
-                    'frame': idx,
-                    'reason': r['reason'],
-                    'confidence': r['confidence']
-                } 
-                for idx, r in enumerate(results) if r['flagged']
-            ]
-        }
-        
-        return jsonify(response)
+    except MemoryError as mem_err:
+        app.logger.error(f"MemoryError occurred: {str(mem_err)}")
+        return jsonify({'error': 'Memory limit exceeded during video processing'}), 500
 
     except Exception as e:
         app.logger.error(f"Analysis failed: {str(e)}")
         return jsonify({'error': 'Video processing failed'}), 500
-    
+
     finally:
         # Cleanup
         if 'filepath' in locals() and os.path.exists(filepath):
             os.remove(filepath)
+
+    # Generate response
+    unsafe_frames = [r for r in results if r['flagged']]
+    app.logger.info(f"Unsafe frames detected: {len(unsafe_frames)}")
+    response = {
+        'status': 'UNSAFE' if unsafe_frames else 'SAFE',
+        'total_frames': len(results),
+        'unsafe_frames': len(unsafe_frames),
+        'unsafe_percentage': (len(unsafe_frames) / len(results)) * 100 if results else 0,
+        'confidence': max(r['confidence'] for r in results) if results else 1.0,
+        'details': [
+            {
+                'frame': idx,
+                'reason': r['reason'],
+                'confidence': r['confidence']
+            } 
+            for idx, r in enumerate(results) if r['flagged']
+        ]
+    }
+    
+    return jsonify(response)
 
 @app.route("/process", methods=["POST"])
 def process():
