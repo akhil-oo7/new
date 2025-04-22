@@ -1,6 +1,6 @@
 services:
   - name: video-processor
-    memory: 512MB  # Minimum recommended for video processing
+    memory: 1GB  # Increased from 512MB
     env: python
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app:app --workers 1 --threads 2
