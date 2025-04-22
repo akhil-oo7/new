@@ -91,7 +91,7 @@ class VideoProcessor:
                 
             return frames
             
-        except Exception as e:
+        except Exception as e:  # Line 83 - verify proper indentation
             self.logger.error(f"Video processing failed: {str(e)}")
             raise ValueError(f"Video processing error: {str(e)}")
             
