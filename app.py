@@ -1,9 +1,15 @@
 import os
+import logging
 from dotenv import load_dotenv
 from flask import Flask, render_template, request, jsonify
 from werkzeug.utils import secure_filename
+from werkzeug.exceptions import RequestEntityTooLarge
 from video_processor import VideoProcessor
 from content_moderator import ContentModerator
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
@@ -39,6 +45,7 @@ def index():
 
 @app.route('/analyze', methods=['POST'])
 def analyze_video():
+    logger.info("Received video for analysis")
     # Validate request
     if 'video' not in request.files:
         return jsonify({'error': 'No video file provided'}), 400
@@ -89,6 +96,11 @@ def analyze_video():
         if 'filepath' in locals() and os.path.exists(filepath):
             os.remove(filepath)
 
+# ===== Error Handlers =====
+@app.errorhandler(RequestEntityTooLarge)
+def handle_large_file(e):
+    return jsonify({'error': 'File too large'}), 413
+
 # ===== Health Check =====
 @app.route('/health')
 def health():
@@ -101,8 +113,5 @@ def health():
 
 # ===== Main =====
 if __name__ == '__main__':
-    app.run(
-        debug=os.getenv('FLASK_DEBUG', 'False').lower() == 'true',
-        host='0.0.0.0',
-        port=int(os.getenv('PORT', 5000))
-    )
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
