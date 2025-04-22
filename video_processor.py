@@ -72,16 +72,18 @@ class VideoProcessor:
                     if not ret or len(frames) >= max_frames:
                         break
                         
-                    # Process every frame but skip based on interval
-                    if frame_count % self.frame_interval == 0:  
-                        if frame is None:
-                            continue
-                            
+                    # Process every 10th frame with memory checks
+                    if frame_count % 10 == 0:  
                         try:
+                            # Check memory usage more frequently
+                            if psutil.virtual_memory().percent > 70:
+                                self.logger.warning("Memory threshold exceeded - saving partial results")
+                                return frames
+                                
                             frame_resized = cv2.resize(frame, self.target_size)
                             frames.append(frame_resized)
                         except Exception as e:
-                            self.logger.error(f"Frame processing error: {str(e)}")
+                            self.logger.error(f"Frame {frame_count} error: {str(e)}")
                             continue
                             
                     frame_count += 1
