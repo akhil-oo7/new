@@ -1,11 +1,14 @@
 import os
 import logging
-from dotenv import load_dotenv
 from flask import Flask, render_template, request, jsonify
 from werkzeug.utils import secure_filename
 from werkzeug.exceptions import RequestEntityTooLarge
-from video_processor import VideoProcessor
-from content_moderator import ContentModerator
+from transformers import pipeline
+import torch
+from dotenv import load_dotenv
+
+# Disable GPU if necessary (optional)
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"  # Uncomment to force CPU-only mode
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -29,68 +32,53 @@ app.config.update(
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['MODEL_PATH'], exist_ok=True)
 
-# ===== Initialize Components =====
-video_processor = VideoProcessor()
-content_moderator = ContentModerator(train_mode=False)
+# Preload the model at startup
+model = pipeline("image-classification", model=app.config['MODEL_PATH'])  # Adjust pipeline and model path as needed
 
 # ===== Helper Functions =====
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 
+def extract_frames(video):
+    # Dummy frame extraction logic for demonstration
+    return [torch.zeros((3, 224, 224))]  # Replace with actual frame extraction logic
+
 # ===== Routes =====
 @app.route('/')
 def home():
-    return render_template('index.html')
+    return "App is running!"
 
 @app.route('/analyze', methods=['POST'])
 def analyze_video():
     logger.info("Received video for analysis")
     # Validate request
     if 'video' not in request.files:
-        return jsonify({'error': 'No video file provided'}), 400
-    
-    file = request.files['video']
-    if file.filename == '':
+        return jsonify({'error': 'No video file uploaded'}), 400
+
+    video = request.files['video']
+    if video.filename == '':
         return jsonify({'error': 'No selected file'}), 400
-    
-    if not file or not allowed_file(file.filename):
+
+    if not video or not allowed_file(video.filename):
         return jsonify({'error': 'Invalid file type'}), 400
 
     try:
         # Secure file handling
-        filename = secure_filename(file.filename)
+        filename = secure_filename(video.filename)
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(filepath)
-        
-        # Process video
-        frames = video_processor.extract_frames(filepath)
-        results = content_moderator.analyze_frames(frames)
-        
-        # Generate response
-        unsafe_frames = [r for r in results if r['flagged']]
-        response = {
-            'status': 'UNSAFE' if unsafe_frames else 'SAFE',
-            'total_frames': len(results),
-            'unsafe_frames': len(unsafe_frames),
-            'unsafe_percentage': (len(unsafe_frames) / len(results)) * 100 if results else 0,
-            'confidence': max(r['confidence'] for r in results) if results else 1.0,
-            'details': [
-                {
-                    'frame': idx,
-                    'reason': r['reason'],
-                    'confidence': r['confidence']
-                } 
-                for idx, r in enumerate(results) if r['flagged']
-            ]
-        }
-        
-        return jsonify(response)
+        video.save(filepath)
+
+        # Example: Extract frames and run inference
+        frames = extract_frames(filepath)  # Replace with your frame extraction logic
+        results = [model(frame) for frame in frames]  # Run inference on each frame
+
+        return jsonify(results)
 
     except Exception as e:
         app.logger.error(f"Analysis failed: {str(e)}")
         return jsonify({'error': 'Video processing failed'}), 500
-    
+
     finally:
         # Cleanup
         if 'filepath' in locals() and os.path.exists(filepath):
