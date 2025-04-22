@@ -56,12 +56,22 @@ def analyze_video():
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(filepath)
         
+        # Add detailed logging for debugging
+        app.logger.info(f"Received file: {filename}")
+        app.logger.info(f"File saved to: {filepath}")
+
         # Process video
+        app.logger.info("Starting frame extraction...")
         frames = video_processor.extract_frames(filepath)
+        app.logger.info(f"Extracted {len(frames)} frames from video.")
+
+        app.logger.info("Starting frame analysis...")
         results = content_moderator.analyze_frames(frames)
-        
+        app.logger.info(f"Analyzed {len(results)} frames.")
+
         # Generate response
         unsafe_frames = [r for r in results if r['flagged']]
+        app.logger.info(f"Unsafe frames detected: {len(unsafe_frames)}")
         response = {
             'status': 'UNSAFE' if unsafe_frames else 'SAFE',
             'total_frames': len(results),
