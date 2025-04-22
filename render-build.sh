@@ -1,10 +1,11 @@
 #!/bin/bash
-# Install system dependencies
-apt-get update && apt-get install -y git-lfs
+# Install Git LFS
+curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash
+apt-get install git-lfs -y
 
-# Initialize Git LFS
+# Pull LFS files
 git lfs install
 git lfs pull
 
-# Install Python dependencies
+# Install Python deps
 pip install -r requirements.txt

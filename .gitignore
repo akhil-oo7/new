@@ -1,5 +1,5 @@
 ﻿# Ignore large files/folders
-models/
+
 __pycache__/
 uploads/
 dataset/

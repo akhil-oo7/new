@@ -6,6 +6,9 @@ from torch.utils.data import Dataset, DataLoader
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from tqdm import tqdm
 import os
+from flask import Flask, request, jsonify  # Import Flask for web service
+import logging  # Add logging for debugging and monitoring
+from flask_cors import CORS  # Add CORS for cross-origin requests
 
 class VideoFrameDataset(Dataset):
     def __init__(self, frames, labels, feature_extractor):
@@ -42,10 +45,12 @@ class ContentModerator:
         """
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model_name = model_name
+        self.confidence_threshold = float(os.getenv("CONFIDENCE_THRESHOLD", 0.7))  # Default to 0.7
         
         # Always use feature extractor
         self.feature_extractor = AutoFeatureExtractor.from_pretrained(model_name)
         
+        model_path = os.getenv("MODEL_PATH", os.path.join("models", "best_model"))  # Use env variable for model path
         if train_mode:
             self.model = AutoModelForImageClassification.from_pretrained(
                 model_name,
@@ -54,15 +59,15 @@ class ContentModerator:
             ).to(self.device)
         else:
             # Load our trained model
-            model_path = os.path.join("models", "best_model")
             if os.path.exists(model_path):
-                print("Loading trained model...")
+                logging.info("Loading trained model...")
                 self.model = AutoModelForImageClassification.from_pretrained(
                     model_path,
                     num_labels=2
                 ).to(self.device)
                 self.model.eval()  # Set to evaluation mode
             else:
+                logging.error("Trained model not found. Please train the model first.")
                 raise FileNotFoundError("Trained model not found. Please train the model first.")
     
     def analyze_frames(self, frames):
@@ -75,6 +80,10 @@ class ContentModerator:
         Returns:
             list: List of analysis results for each frame
         """
+        if not frames:
+            logging.warning("No frames provided for analysis.")
+            return []
+        
         results = []
         
         # Convert frames to dataset
@@ -91,8 +100,8 @@ class ContentModerator:
                 for pred in predictions:
                     # Get probability of violence (class 1)
                     violence_prob = pred[1].item()
-                    # Lower threshold for violence detection
-                    flagged = violence_prob > 0.3  # Changed from 0.5 to 0.3
+                    # Use configurable threshold
+                    flagged = violence_prob > self.confidence_threshold
                     
                     results.append({
                         'flagged': flagged,
@@ -100,4 +109,49 @@ class ContentModerator:
                         'confidence': violence_prob if flagged else 1 - violence_prob
                     })
         
-        return results 
+        return results
+
+# Initialize Flask app
+app = Flask(__name__)
+CORS(app)  # Enable CORS for the Flask app
+moderator = ContentModerator()
+
+@app.route('/analyze', methods=['POST'])
+def analyze():
+    try:
+        data = request.json
+        frames = data.get('frames', [])
+        if not frames:
+            return jsonify({"error": "No frames provided"}), 400
+        
+        results = moderator.analyze_frames(frames)
+        return jsonify(results)
+    except Exception as e:
+        logging.error(f"Error during analysis: {e}")
+        return jsonify({"error": "Internal server error"}), 500
+
+def validate_env_variables():
+    """
+    Validate critical environment variables.
+    """
+    required_vars = ["MODEL_PATH", "PORT"]
+    for var in required_vars:
+        if not os.getenv(var):
+            logging.error(f"Environment variable {var} is not set.")
+            raise EnvironmentError(f"Environment variable {var} is required but not set.")
+
+if __name__ == '__main__':
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        handlers=[
+            logging.StreamHandler()
+        ]
+    )
+    try:
+        validate_env_variables()
+        port = int(os.getenv("PORT", 5000))
+        app.run(host='0.0.0.0', port=port)
+    except Exception as e:
+        logging.critical(f"Application failed to start: {e}")
+        exit(1)
