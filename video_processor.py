@@ -72,20 +72,19 @@ class VideoProcessor:
                     if not ret or (max_frames and len(frames) >= max_frames):
                         break
                     
-                    if frame_count % self.frame_interval == 0:
+                    # Process every 10th frame to reduce memory usage
+                    if frame_count % 10 == 0:  
                         try:
-                            # Check memory usage
-                            memory_usage = psutil.virtual_memory().percent
-                            if memory_usage > 80:  # Threshold for memory usage
-                                self.logger.warning("High memory usage detected. Pausing frame extraction.")
+                            if psutil.virtual_memory().percent > 70:  # More aggressive memory check
+                                self.logger.warning("Memory threshold exceeded")
                                 break
                             
                             # Resize frame
                             frame_resized = cv2.resize(frame, self.target_size)
                             frames.append(frame_resized)
                         except Exception as e:
-                            self.logger.error(f"Error processing frame {frame_count}: {e}")
-                    
+                            self.logger.error(f"Frame {frame_count} error: {e}")
+                            continue
                     frame_count += 1
                     pbar.update(1)
             
