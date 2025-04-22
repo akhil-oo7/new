@@ -17,6 +17,7 @@ class VideoProcessor:
         self.frame_interval = max(1, frame_interval)  # Ensure at least 1
         self.target_size = target_size
         self.logger = logging.getLogger(__name__)
+        logging.basicConfig(level=logging.INFO)
         
         # Verify OpenCV backend (important for Render)
         self._verify_opencv()
@@ -38,7 +39,7 @@ class VideoProcessor:
 
     def extract_frames(self, video_path, max_frames=None):
         """
-        Extract frames from a video file with robust error handling and memory optimization.
+        Extract frames from a video file with memory optimization and logging.
         
         Args:
             video_path (str): Path to the video file
@@ -56,31 +57,22 @@ class VideoProcessor:
         try:
             cap = cv2.VideoCapture(video_path)
             if not cap.isOpened():
-                raise ValueError("Could not open video file - may be corrupt or unsupported format")
-            
+                self.logger.error("Failed to open video file.")
+                return []
+
             total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
             if total_frames <= 0:
                 raise ValueError("Video contains no frames")
             
-            # Adjust frame interval if video is very short
-            effective_interval = self.frame_interval
-            if total_frames < 100:
-                effective_interval = max(1, self.frame_interval // 3)
-            
-            with tqdm(total=min(total_frames, max_frames*effective_interval) if max_frames else total_frames, 
-                     desc="Extracting frames") as pbar:
+            with tqdm(total=total_frames, desc="Extracting frames") as pbar:
                 frame_count = 0
-                extracted_count = 0
                 
                 while True:
-                    if max_frames and extracted_count >= max_frames:
-                        break
-                        
                     ret, frame = cap.read()
-                    if not ret:
+                    if not ret or (max_frames and len(frames) >= max_frames):
                         break
                     
-                    if frame_count % effective_interval == 0:
+                    if frame_count % self.frame_interval == 0:
                         try:
                             # Check memory usage
                             memory_usage = psutil.virtual_memory().percent
@@ -88,13 +80,11 @@ class VideoProcessor:
                                 self.logger.warning("High memory usage detected. Pausing frame extraction.")
                                 break
                             
-                            # Convert BGR to RGB and resize
-                            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                            frame_resized = cv2.resize(frame_rgb, self.target_size)
+                            # Resize frame
+                            frame_resized = cv2.resize(frame, self.target_size)
                             frames.append(frame_resized)
-                            extracted_count += 1
                         except Exception as e:
-                            self.logger.warning(f"Error processing frame {frame_count}: {str(e)}")
+                            self.logger.error(f"Error processing frame {frame_count}: {e}")
                     
                     frame_count += 1
                     pbar.update(1)
