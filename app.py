@@ -40,8 +40,8 @@ def allowed_file(filename):
 
 # ===== Routes =====
 @app.route('/')
-def index():
-    return render_template('index.html')
+def home():
+    return "App is running!"
 
 @app.route('/analyze', methods=['POST'])
 def analyze_video():

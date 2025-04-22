@@ -1,4 +1,5 @@
 import os
+import json
 from data_loader import VideoDataset
 from content_moderator import ContentModerator
 import numpy as np
@@ -54,6 +55,12 @@ def main():
     os.makedirs("models", exist_ok=True)
     moderator.model.save_pretrained("models/best_model")
     print("Model saved successfully!")
+    
+    # Save metrics
+    metrics_path = os.path.join("models", "best_model", "metrics.json")
+    with open(metrics_path, "w") as f:
+        json.dump(metrics, f, indent=4)
+    print(f"Metrics saved to {metrics_path}")
 
 if __name__ == "__main__":
-    main() 
+    main()
