@@ -62,7 +62,9 @@ def analyze_video():
 
         # Process video
         app.logger.info("Starting frame extraction...")
+        app.logger.info(f"Video processor config: interval={video_processor.frame_interval}, target_size={video_processor.target_size}")
         frames = video_processor.extract_frames(filepath)
+        app.logger.info(f"Extracted frames sample: {frames[0].shape if frames else 'No frames'}")
         app.logger.info(f"Extracted {len(frames)} frames from video.")
 
         app.logger.info("Starting frame analysis...")
@@ -112,11 +114,18 @@ def process():
 # ===== Health Check =====
 @app.route('/health')
 def health():
+    model_files = [
+        'model.safetensors',
+        'pytorch_model.bin',
+        'model.pt'
+    ]
+    model_loaded = any(
+        os.path.exists(os.path.join(app.config['MODEL_PATH'], f))
+        for f in model_files
+    )
     return jsonify({
         'status': 'ready',
-        'model_loaded': os.path.exists(
-            os.path.join(app.config['MODEL_PATH'], 'model.safetensors')
-        )
+        'model_loaded': model_loaded
     })
 
 # ===== Main =====

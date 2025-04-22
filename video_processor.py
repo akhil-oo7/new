@@ -37,7 +37,7 @@ class VideoProcessor:
         if os.path.getsize(video_path) == 0:
             raise ValueError("Video file is empty")
 
-    def extract_frames(self, video_path, max_frames=50):  # Hard limit
+    def extract_frames(self, video_path, max_frames=50):
         """
         Extract frames from a video file with memory optimization and logging.
         
@@ -69,28 +69,21 @@ class VideoProcessor:
                 
                 while True:
                     ret, frame = cap.read()
-                    if not ret or len(frames) >= max_frames:  # Strict frame limit
+                    if not ret or len(frames) >= max_frames:
                         break
                         
-                    if frame_count % 20 == 0:  # Process every 20th frame
-                        if psutil.virtual_memory().percent > 60:  # Conservative threshold
-                            self.logger.warning("Memory threshold exceeded - stopping early")
-                            return frames  # Return partial results
-                        
-                        # Resize frame
-                        frame_resized = cv2.resize(frame, self.target_size)
-                        frames.append(frame_resized)
-                    
-                    if frame is None:
-                        raise ValueError("Frame is empty")
-                    
-                    try:
-                        self.logger.error(f"Skipping frame {frame_count}: {str(e)}")
-                        continue
-                    except Exception as e:
-                        self.logger.error(f"Error processing frame {frame_count}: {str(e)}")
-                        continue
-                    
+                    # Process every frame but skip based on interval
+                    if frame_count % self.frame_interval == 0:  
+                        if frame is None:
+                            continue
+                            
+                        try:
+                            frame_resized = cv2.resize(frame, self.target_size)
+                            frames.append(frame_resized)
+                        except Exception as e:
+                            self.logger.error(f"Frame processing error: {str(e)}")
+                            continue
+                            
                     frame_count += 1
                     pbar.update(1)
             
