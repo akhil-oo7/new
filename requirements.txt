@@ -8,6 +8,15 @@ pillow==10.1.0
 scikit-learn==1.3.2
 flask==3.0.0
 werkzeug==3.0.1
-gunicorn==20.1.0 # Critical for Render to fetch LFS fileswaitress==2.1.2
+gunicorn==20.1.0
+waitress==2.1.2  # Separate from gunicorn line
 flask_cors
 psutil
+app.py
+content_moderator.py
+video_processor.py
+data_loader.py
+train.py
+main.py
+render.yaml
+Procfile

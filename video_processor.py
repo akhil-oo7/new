@@ -107,3 +107,6 @@ class VideoProcessor:
     def cleanup():
         """Clean up OpenCV resources."""
         cv2.destroyAllWindows()
+def extract_frames(video_path, interval=1):
+    # Reduce memory usage by processing smaller batches
+    batch_size = 10  # Reduced from default
